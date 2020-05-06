@@ -7,9 +7,9 @@ class Game:
     def __init__(self, width=400, height=400, gui=False):
         self.clock = pygame.time.Clock()
         self.score = 0
-        self.done = False
+        self.running = True
         self.board = {'width': width, 'height': height}
-        self.snake = Snake()
+        self.snake = Snake(width, height)
         self.food = []
         self.food_color = (255, 0, 0)
         self.gui = gui
@@ -18,13 +18,34 @@ class Game:
         # self.generate_food()
         if self.gui:
             self.render_init()
-        while True:
-            game.step(randint(0, 3))
+        while self.running:
+            self.clock.tick(3)
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_UP:
+                        self.snake.move(0)
+                    elif event.key == pygame.K_RIGHT:
+                        self.snake.move(1)
+                    elif event.key == pygame.K_DOWN:
+                        self.snake.move(2)
+                    elif event.key == pygame.K_LEFT:
+                        self.snake.move(3)
+
+            game.step()
+
+        while not self.running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
 
     def render_init(self):
         pygame.init()
         pygame.display.set_caption("Snake")
-        self.dis = pygame.display.set_mode((self.board["width"] + 2, self.board["height"] + 2))
+        self.dis = pygame.display.set_mode((self.board["width"], self.board["height"]))
         self.render()
 
     def render(self):
@@ -41,11 +62,11 @@ class Game:
                 food = []
         self.food = food
 
-    def step(self, move):
-        self.snake.move(move)
+    def step(self):
+        if not self.snake.step():
+            self.running = False
         if self.gui:
             self.render()
-            self.clock.tick(3)
 
 
 if __name__ == "__main__":
