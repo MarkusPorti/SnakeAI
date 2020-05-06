@@ -4,22 +4,24 @@ from snake_game.Snake import Snake
 
 
 class Game:
-    def __init__(self, width=400, height=400, gui=False):
+    def __init__(self, width=20, height=20, gui=False):
         self.clock = pygame.time.Clock()
         self.score = 0
         self.running = True
+        self.pixel = 20
         self.board = {'width': width, 'height': height}
-        self.snake = Snake(width, height)
+        self.snake = Snake(width, height, self.pixel)
         self.food = []
         self.food_color = (255, 0, 0)
         self.gui = gui
 
     def start(self):
-        # self.generate_food()
+        self.generate_food()
         if self.gui:
             self.render_init()
         while self.running:
-            self.clock.tick(6)
+            # Framerate
+            self.clock.tick(10)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -48,28 +50,32 @@ class Game:
     def render_init(self):
         pygame.init()
         pygame.display.set_caption("Snake")
-        self.dis = pygame.display.set_mode((self.board["width"], self.board["height"]))
+        self.dis = pygame.display.set_mode((self.board["width"] * self.pixel, self.board["height"] * self.pixel))
         self.render()
 
     def render(self):
         self.dis.fill((255, 255, 255))
-        # pygame.draw.rect(self.dis, self.food_color, [self.food[0], self.food[1], 10, 10])
+        pygame.draw.rect(self.dis, self.food_color,
+                         [self.food[0] * self.pixel, self.food[1] * self.pixel, self.pixel, self.pixel])
         self.snake.render(self.dis)
         pygame.display.update()
 
+    def step(self):
+        result = self.snake.step(self.food)
+        if result == -1:
+            self.running = False
+        elif result == 1:
+            self.generate_food()
+        if self.gui:
+            self.render()
+
     def generate_food(self):
         food = []
-        while not food:
-            food = [randint(1, self.board["width"]), randint(1, self.board["height"])]
+        while food == []:
+            food = [randint(0, self.board["width"]-1), randint(0, self.board["height"]-1)]
             if food in self.snake:
                 food = []
         self.food = food
-
-    def step(self):
-        if not self.snake.step():
-            self.running = False
-        if self.gui:
-            self.render()
 
 
 if __name__ == "__main__":
