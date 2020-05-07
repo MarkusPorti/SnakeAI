@@ -4,9 +4,9 @@ from snake_game.Snake import Snake
 
 
 class Game:
-    def __init__(self, width=20, height=20, gui=False):
+    def __init__(self, width=40, height=40, gui=False):
         self.gui = gui
-        self.pixel = 20
+        self.pixel = 10
         self.snake = Snake(width, height, self.pixel)
         self.food = []
         self.running = True
