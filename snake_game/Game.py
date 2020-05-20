@@ -19,33 +19,6 @@ class Game:
         self.generate_food()
         if self.gui:
             self.render_init()
-        while self.running:
-            # Framerate
-            self.clock.tick(10)
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    quit()
-
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_UP:
-                        self.snake.move(0)
-                    elif event.key == pygame.K_RIGHT:
-                        self.snake.move(1)
-                    elif event.key == pygame.K_DOWN:
-                        self.snake.move(2)
-                    elif event.key == pygame.K_LEFT:
-                        self.snake.move(3)
-                    break
-
-            game.step()
-
-        while not self.running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    quit()
 
     def render_init(self):
         pygame.init()
@@ -68,6 +41,7 @@ class Game:
             self.generate_food()
         if self.gui:
             self.render()
+        return self.running, self.snake
 
     def generate_food(self):
         food = []
@@ -81,3 +55,33 @@ class Game:
 if __name__ == "__main__":
     game = Game(gui=True)
     game.start()
+
+    while game.running:
+        # Framerate
+        game.clock.tick(10)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            # if event.type == pygame.KEYDOWN:
+            #     if event.key == pygame.K_UP:
+            #         self.snake.move(0)
+            #     elif event.key == pygame.K_RIGHT:
+            #         self.snake.move(1)
+            #     elif event.key == pygame.K_DOWN:
+            #         self.snake.move(2)
+            #     elif event.key == pygame.K_LEFT:
+            #         self.snake.move(3)
+            #     break
+
+        game.snake.move(randint(0, 3))
+
+        game.step()
+
+    while not game.running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
