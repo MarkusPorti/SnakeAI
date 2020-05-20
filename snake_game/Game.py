@@ -5,15 +5,15 @@ from snake_game.Snake import Snake
 
 class Game:
     def __init__(self, width=20, height=20, gui=False):
-        self.clock = pygame.time.Clock()
-        self.score = 0
-        self.running = True
+        self.gui = gui
         self.pixel = 20
-        self.board = {'width': width, 'height': height}
         self.snake = Snake(width, height, self.pixel)
         self.food = []
+        self.running = True
+        self.moves_left = width * height
+        self.board = {'width': width, 'height': height}
         self.food_color = (255, 0, 0)
-        self.gui = gui
+        self.clock = pygame.time.Clock()
 
     def start(self):
         self.generate_food()
@@ -23,6 +23,7 @@ class Game:
     def render_init(self):
         pygame.init()
         pygame.display.set_caption("Snake")
+        self.font = pygame.font.SysFont("Comic Sans Ms", 16)
         self.dis = pygame.display.set_mode((self.board["width"] * self.pixel, self.board["height"] * self.pixel))
         self.render()
 
@@ -31,13 +32,22 @@ class Game:
         pygame.draw.rect(self.dis, self.food_color,
                          [self.food[0] * self.pixel, self.food[1] * self.pixel, self.pixel, self.pixel])
         self.snake.render(self.dis)
+
+        text_score = self.font.render("Score: " + str(self.snake.score), True, (0, 0, 0))
+        self.dis.blit(text_score, (5, 0))
+        text_score = self.font.render("Moves left: " + str(self.moves_left), True, (0, 0, 0))
+        self.dis.blit(text_score, (5, 20))
         pygame.display.update()
 
     def step(self):
         result = self.snake.step(self.food)
-        if result == -1:
+        if result == 0:
+            self.moves_left -= 1
+
+        if result == -1 or self.moves_left <= 0:
             self.running = False
         elif result == 1:
+            self.moves_left = self.board["width"] * self.board["height"]
             self.generate_food()
         if self.gui:
             self.render()
