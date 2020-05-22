@@ -13,6 +13,8 @@ import random
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from threading import Thread
+
 
 class Game:
     def __init__(self, width=20, height=20, gui=False):
@@ -20,15 +22,27 @@ class Game:
         self.pixel = 20
         self.food = []
         self.running = True
-        self.moves_left = width * height
         self.board = {'width': width, 'height': height}
+        self.moves_left = width * height
         self.food_color = (255, 0, 0)
         self.clock = pygame.time.Clock()
-        self.running = True
-        self.snake = Snake(self.board['width'], self.board['height'], self.pixel)
+        self.snake = self.get_new_snake()
         self.generate_food()
         if self.gui:
             self.render_init()
+
+    def get_new_snake(self):
+        return Snake(self.board['width'], self.board['height'], self.pixel)
+
+    def calc_moves_left(self):
+        return self.board['width'] * self.board['height']
+
+    def reset_game(self):
+        self.food = []
+        self.generate_food()
+        self.running = True
+        self.moves_left = self.calc_moves_left()
+        self.snake = self.get_new_snake()
 
     def render_init(self):
         pygame.init()
@@ -60,7 +74,8 @@ class Game:
             self.moves_left = self.board["width"] * self.board["height"]
             self.generate_food()
         if self.gui:
-            self.render()
+            Thread(target=self.render).start()
+            # self.render()
         return self.get_state()
 
     def generate_food(self):
@@ -92,10 +107,10 @@ class Game:
 def create_model():
     model = Sequential()
     model.add(Dense(units=400, activation='relu', input_dim=400))
-    model.add(Dense(units=400, activation='relu'))
-    model.add(Dense(units=400, activation='relu'))
+    model.add(Dense(units=200, activation='relu'))
+    model.add(Dense(units=200, activation='relu'))
     model.add(Dense(units=4, activation='softmax'))
-    opt = Adam(0.005)
+    opt = Adam(0.01)  # TODO: change it later to 0.0001/5
     model.compile(loss='mse', optimizer=opt)
     return model
 
@@ -147,19 +162,25 @@ def run(episodes=300):
 
     score_plot = []
     counter_plot = []
+    counter_games: int = 0
+    max_score: int = 0
+    game = Game(gui=False)
 
-    for counter_games in range(episodes):
+    # for counter_games in range(episodes):
+    while game.snake.score < 100:
+
         print('Simulation ', counter_games, ' out of ', str(episodes), '\r', end='')
-        game = Game(gui=True)
+        game.reset_game()
 
+        # run one game till snake dies
         while game.running:
-            # game.clock.tick(20)
+            # game.clock.tick(60)
 
             # get old state
             state_old = game.get_state()
 
             # at the beginning more random, lately more advised actions
-            if randint(0, 1) < 1 - (counter_games * 1/25):
+            if randint(0, 1) < 1 - (counter_games * 1 / 25):
                 final_move = randint(0, 3)
             else:
                 prediction = model.predict(state_old[3].reshape((1, 400)))
@@ -167,11 +188,11 @@ def run(episodes=300):
 
             game.snake.move(final_move)
             state_new = game.step()
-            reward = 0
+            reward = 0.1
             if not state_new[0]:
-                reward = -10
+                reward = -1
             elif state_new[2].score > state_old[2].score:
-                reward = 20
+                reward = 1
 
             # train short
             train_short_memmory(state_old, final_move, reward, state_new, state_new[0])
@@ -180,8 +201,22 @@ def run(episodes=300):
         # train long
         train_long_memmory(500)
 
+        # print current state of training
+        if counter_games % 10 == 0:
+            print('Game : ', counter_games)
+            print('Highest score till now was:', max_score)
+            print('---------------------------')
+
+        if game.snake.score > max_score:
+            max_score = game.snake.score
+
         score_plot.append(game.snake.score)
         counter_plot.append(counter_games)
+        counter_games += 1
+
+    # save current weights of model
+    model.save_weights('./checkpoints/my_checkpoint')
+
     plot_seaborn(counter_plot, score_plot)
 
 
