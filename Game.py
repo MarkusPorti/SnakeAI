@@ -1,12 +1,10 @@
 import pygame
 from random import randint
-from snake_game.Snake import Game
+from Snake import Game
 
 import numpy as np
-from keras.optimizers import Adam
 from keras.optimizers import RMSprop
 from keras.models import Sequential, Model
-from keras.layers.core import Dense, Dropout
 from keras import layers
 
 import seaborn as sns
@@ -123,7 +121,7 @@ class Agent:
             counter_plot.append(counter_games)
 
         # save current weights of self.model
-        self.model.save_weights('./checkpoints/my_checkpoint')
+        self.model.save_weights('checkpoints/my_checkpoint')
 
         plot_seaborn(counter_plot, score_plot)
 

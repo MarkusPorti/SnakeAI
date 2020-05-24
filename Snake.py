@@ -124,16 +124,16 @@ class Snake:
             else:
                 self.direction = 0
 
-        head = list(self.snake[0])
+        head = self.snake[0]
         if self.direction == 0:
-            head[1] -= 1
+            head = (self.snake[0][0], self.snake[0][1] - 1)
         elif self.direction == 1:
-            head[0] += 1
+            head = (self.snake[0][0] + 1, self.snake[0][1])
         elif self.direction == 2:
-            head[1] += 1
+            head = (self.snake[0][0], self.snake[0][1] + 1)
         elif self.direction == 3:
-            head[0] -= 1
-        self.snake.insert(0, tuple(head))
+            head = (self.snake[0][0] - 1, self.snake[0][1])
+        self.snake.insert(0, head)
 
         if self.eat(food):
             self.score += 1
