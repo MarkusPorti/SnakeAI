@@ -12,23 +12,34 @@ class Snake:
         self.score = 0
 
         self.direction = 0
-        self.snake = [[x, y]]
-        for i in range(1, 4):
-            self.snake.append([x, y + i])
+        self.snake = [(x, y)]
+        for i in range(1, 3):
+            self.snake.append((x, y + i))
 
-    def move(self, move):
-        # 0 - up
-        # 1 - right
-        # 2 - down
-        # 3 - left
-        if (move == self.direction + 1 or
-                move == self.direction - 1 or
-                move == self.direction + 3 or
-                move == self.direction - 3):
-            self.direction = move
+    def reset(self, x=10, y=10):
+        self.score = 0
+        self.direction = 0
+        self.snake = [(x, y)]
+        for i in range(1, 3):
+            self.snake.append((x, y + i))
 
-    def step(self, food):
-        head = [self.snake[0][0], self.snake[0][1]]
+    def step(self, move, food):
+        # 0 - straight
+        # 1 - left
+        # 2 - right
+        if move == 1:
+            if self.direction > 0:
+                self.direction -= 1
+            else:
+                self.direction = 3
+
+        if move == 2:
+            if self.direction < 3:
+                self.direction += 1
+            else:
+                self.direction = 0
+
+        head = list(self.snake[0])
         if self.direction == 0:
             head[1] -= 1
         elif self.direction == 1:
@@ -37,13 +48,15 @@ class Snake:
             head[1] += 1
         elif self.direction == 3:
             head[0] -= 1
-        self.snake.insert(0, head)
+        self.snake.insert(0, tuple(head))
 
-        if not self.eat(food):
-            self.snake.pop()
-        else:
+        if self.eat(food):
             self.score += 1
+            # Don't grow anymore
+            self.snake.pop()
             return 1
+        else:
+            self.snake.pop()
 
         if self.check_collision():
             return -1

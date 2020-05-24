@@ -5,8 +5,10 @@ from snake_game.Snake import Snake
 import numpy as np
 from keras.utils import to_categorical
 from keras.optimizers import Adam
+from keras.optimizers import RMSprop
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout
+from keras import layers
 import collections
 import random
 
@@ -18,37 +20,33 @@ from threading import Thread
 
 class Game:
     def __init__(self, width=20, height=20, gui=False):
-        self.gui = gui
         self.pixel = 20
-        self.food = []
-        self.running = True
-        self.board = {'width': width, 'height': height}
-        self.moves_left = width * height
         self.food_color = (255, 0, 0)
         self.clock = pygame.time.Clock()
-        self.snake = self.get_new_snake()
+        self.width = width
+        self.height = height
+        self.board = np.ones((width, height), dtype=int)  # complete Board
+        self.moves_left = width * height
+        self.snake = Snake(self.width, self.height, self.pixel)
+        self.food = ()
         self.generate_food()
+        self.running = True
+        self.gui = gui
         if self.gui:
             self.render_init()
 
-    def get_new_snake(self):
-        return Snake(self.board['width'], self.board['height'], self.pixel)
-
-    def calc_moves_left(self):
-        return self.board['width'] * self.board['height']
-
     def reset_game(self):
+        self.moves_left = self.width * self.height
+        self.snake.reset()
         self.food = []
         self.generate_food()
         self.running = True
-        self.moves_left = self.calc_moves_left()
-        self.snake = self.get_new_snake()
 
     def render_init(self):
         pygame.init()
         pygame.display.set_caption("Snake")
         self.font = pygame.font.SysFont("Comic Sans Ms", 16)
-        self.dis = pygame.display.set_mode((self.board["width"] * self.pixel, self.board["height"] * self.pixel))
+        self.dis = pygame.display.set_mode((self.width * self.pixel, self.height * self.pixel))
         self.render()
 
     def render(self):
@@ -63,55 +61,68 @@ class Game:
         self.dis.blit(text_score, (5, 20))
         pygame.display.update()
 
-    def step(self):
-        result = self.snake.step(self.food)
+    def step(self, move):
+        result = self.snake.step(move, self.food)
         if result == 0:
             self.moves_left -= 1
 
         if result == -1 or self.moves_left <= 0:
             self.running = False
         elif result == 1:
-            self.moves_left = self.board["width"] * self.board["height"]
+            self.moves_left = self.width * self.height
             self.generate_food()
         if self.gui:
-            Thread(target=self.render).start()
-            # self.render()
+            # Thread(target=self.render).start()
+            self.render()
         return self.get_state()
 
     def generate_food(self):
-        food = []
-        while food == []:
-            food = [randint(0, self.board["width"] - 1), randint(0, self.board["height"] - 1)]
+        food = ()
+        while not food:
+            food = (randint(0, self.width - 1), randint(0, self.height - 1))
             if food in self.snake:
-                food = []
+                food = ()
         self.food = food
 
     def get_state(self):
         return self.running, self.moves_left, self.snake, self.__get_map()
 
     def __get_map(self):
-        map = []
-        for w in range(self.board['width']):
-            map.append([])
-            for h in range(self.board['height']):
-                map[w].append(0)
-                if [w, h] in self.snake:
-                    map[w][h] = 1
-                elif [w, h] == self.food:
-                    map[w][h] = 2
-                else:
-                    map[w][h] = 0
-        return np.array(map).flatten()
+        self.board = np.zeros(self.width * self.height, dtype=int)
+        snake = np.array(self.snake.snake)
+        snake = snake[:, 1] * 20 + snake[:, 0]
+        self.board[snake[1:]] = 1
+        self.board[0:20] = 1
+        self.board[380:400] = 1
+        if self.running:
+            self.board[snake[0]] = 1
+        self.board[self.food[1] * 20 + self.food[0]] = .5
+        self.board = np.asarray(self.board).reshape(1, 20, 20, 1)
+        self.board[:, 0] = 1
+        self.board[:, -1] = 1
+        return self.board
 
 
 def create_model():
     model = Sequential()
-    model.add(Dense(units=400, activation='relu', input_dim=400))
-    model.add(Dense(units=200, activation='relu'))
-    model.add(Dense(units=200, activation='relu'))
-    model.add(Dense(units=4, activation='softmax'))
-    opt = Adam(0.01)  # TODO: change it later to 0.0001/5
-    model.compile(loss='mse', optimizer=opt)
+    model.add(layers.Conv2D(20, (3, 3), activation='relu', input_shape=(20, 20, 1)))
+    model.add(layers.Conv2D(40, (3, 3), activation='relu'))
+    model.add(layers.Conv2D(30, (3, 3), activation='relu'))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(256, activation='relu'))
+    model.add(layers.Dense(3))
+
+    # model.add(Dense(units=400, activation='relu', input_dim=400))
+    # model.add(Dropout(0.5))
+    # model.add(Dense(units=128, activation='relu'))
+    # model.add(Dropout(0.5))
+    # model.add(Dense(units=128, activation='relu'))
+    # model.add(Dropout(0.5))
+    # model.add(Dense(units=16, activation='relu'))
+    # model.add(Dense(units=3, activation='softmax'))
+
+    # opt = Adam(0.0001)  # TODO: change it later to 0.0001/5
+    model.compile(RMSprop(), "MSE")
     return model
 
 
@@ -120,12 +131,14 @@ def remember(state, action, reward, next_state, running):
 
 
 def train_short_memmory(state, action, reward, next_state, running):
-    target = reward
-    if running:
-        target = reward + np.amax(model.predict(next_state[3].reshape((1, 400))))
-    target_f = model.predict(state[3].reshape((1, 400)))
-    target_f[0][np.argmax(action)] = target
-    model.fit(state[3].reshape((1, 400)), target_f, epochs=1, verbose=0)
+    # target = reward
+    # if running:
+    target = reward + 0.9 * np.amax(model.predict(next_state[3])[0])
+    target_f = model.predict(state[3])
+    target_f[0][action] = target
+    # prediciton = model.predict(next_state[3])
+    # prediciton[0][action] = reward
+    model.fit(state[3], target_f, epochs=1, verbose=0)
 
 
 def train_long_memmory(batch_size):
@@ -136,10 +149,11 @@ def train_long_memmory(batch_size):
     for state, action, reward, next_state, running in minibatch:
         target = reward
         if running:
-            target = reward + np.amax(model.predict(np.array([next_state[3]]))[0])
-        target_f = model.predict(np.array([state[3]]))
-        target_f[0][np.argmax(action)] = target
-        model.fit(np.array([state[3]]), target_f, epochs=1, verbose=0)
+            target = reward + np.amax(model.predict(next_state[3])[0])
+        target_f = model.predict(state[3])
+        target_f[0][action] = target
+        model.fit(state[3], target_f, epochs=1, verbose=0)
+    memory.clear()
 
 
 def plot_seaborn(array_counter, array_score):
@@ -155,51 +169,61 @@ def plot_seaborn(array_counter, array_score):
     plt.show()
 
 
-def run(episodes=300):
+def run():
     global model, memory
     model = create_model()
     memory = collections.deque(maxlen=3000)
 
+    epsilon= 1.
     score_plot = []
     counter_plot = []
     counter_games: int = 0
     max_score: int = 0
-    game = Game(gui=False)
+    game = Game(gui=True)
+    random_moves = True
 
-    # for counter_games in range(episodes):
-    while game.snake.score < 100:
-
-        print('Simulation ', counter_games, ' out of ', str(episodes), '\r', end='')
+    # for _ in range(2000):
+    while game.snake.score < 10:
+        print('Simulation ', counter_games, '\r', end='')
         game.reset_game()
+
+        if epsilon > .1:
+            # fine tune epsilon
+            epsilon -= .9 / (5000 / 2)
 
         # run one game till snake dies
         while game.running:
-            # game.clock.tick(60)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+            # game.clock.tick(144)
 
             # get old state
             state_old = game.get_state()
 
             # at the beginning more random, lately more advised actions
-            if randint(0, 1) < 1 - (counter_games * 1 / 25):
-                final_move = randint(0, 3)
-            else:
-                prediction = model.predict(state_old[3].reshape((1, 400)))
+            if np.random.random() > epsilon:
+                # use prediction
+                prediction = model.predict(state_old[3])
                 final_move = np.argmax(prediction[0])
+            else:
+                final_move = randint(0, 2)
+                # print(counter_games, ': Prediciton was ', prediction, ' -> ', final_move)
 
-            game.snake.move(final_move)
-            state_new = game.step()
-            reward = 0.1
+            state_new = game.step(final_move)
+            reward = 0
             if not state_new[0]:
                 reward = -1
             elif state_new[2].score > state_old[2].score:
-                reward = 1
+                reward = 5
 
             # train short
             train_short_memmory(state_old, final_move, reward, state_new, state_new[0])
-            remember(state_old, final_move, reward, state_new, state_new[0])
+            # remember(state_old, final_move, reward, state_new, state_new[0])
 
         # train long
-        train_long_memmory(500)
+        # train_long_memmory(500)
 
         # print current state of training
         if counter_games % 10 == 0:
