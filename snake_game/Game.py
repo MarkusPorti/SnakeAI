@@ -216,7 +216,7 @@ def run():
             if not state_new[0]:
                 reward = -1
             elif state_new[2].score > state_old[2].score:
-                reward = 5
+                reward = len(game.snake.snake)
 
             # train short
             train_short_memmory(state_old, final_move, reward, state_new, state_new[0])

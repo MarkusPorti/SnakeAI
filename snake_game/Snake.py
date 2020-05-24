@@ -52,8 +52,6 @@ class Snake:
 
         if self.eat(food):
             self.score += 1
-            # Don't grow anymore
-            self.snake.pop()
             return 1
         else:
             self.snake.pop()
