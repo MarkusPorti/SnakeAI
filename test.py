@@ -1,17 +1,15 @@
 import numpy as np
 
-board = np.zeros((10, 10), dtype=int)
-snake = np.array([(5, 5), (5, 6), (5, 7)])
-board[snake[1:, 1], snake[1:, 0]] = 1
-board[:, 0] = 1  # left wall
-board[:, -1] = 1  # right wall
-board[0, :] = 1  # top wall
-board[-1, :] = 1  # bottom wall
-print(board)
+if __name__ == "__main__":
+    x = np.zeros(14*3).reshape((14, 3))
+    x[:,0] = 5
+    print(x)
 
-
-
-arr = np.zeros(20 * 20).reshape(20, 20, 1)
-arr[:, 0] = 2
-arr[:, -1] = 2
-print(arr.reshape((20, 20)))
+    # pygame.init()
+    # dis = pygame.display.set_mode((18 * 20, 18 * 20))
+    # pygame.draw.rect(dis, (255, 0, 0),
+    #                  [17 * 20, 5 * 20, 20, 20])
+    # pygame.display.update()
+    # while True:
+    #     for i in range(3):
+    #         i += 1
