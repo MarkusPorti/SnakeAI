@@ -2,7 +2,7 @@ import pygame
 
 
 class Snake:
-    def __init__(self, width, height, pixel=20, x=10, y=10):
+    def __init__(self, width, height, pixel=20, x=6, y=6):
         self.pixel = pixel
         self.width = width
         self.height = height
@@ -16,7 +16,7 @@ class Snake:
         for i in range(1, 3):
             self.snake.append((x, y + i))
 
-    def reset(self, x=10, y=10):
+    def reset(self, x=6, y=6):
         self.score = 0
         self.direction = 0
         self.snake = [(x, y)]
