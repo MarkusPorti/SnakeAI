@@ -3,3 +3,4 @@ from agent import Agent
 if __name__ == "__main__":
     agent = Agent()
     agent.train(5000)
+    # agent.play_manual()
