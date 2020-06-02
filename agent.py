@@ -3,8 +3,14 @@ from random import randint
 from game import Game
 
 import numpy as np
+import tensorflow as tf
 from keras.optimizers import Adam
+from keras.optimizers import RMSprop
+from keras.optimizers import SGD
 from keras.models import Sequential, Model
+from keras.layers.core import Dense, Flatten
+from keras.layers import Dropout
+from keras.layers import BatchNormalization
 from keras import layers
 
 import matplotlib.pyplot as plt
@@ -19,40 +25,57 @@ class Agent:
 
     def __create_model(self):
         _model = Sequential()
-        # _model.add(layers.Conv2D(16, (3, 3), activation='relu', input_shape=(self.game.width + 2, self.game.width + 2, 1)))
+        # _model.add(
+        #     layers.Conv2D(64, (3, 3), activation='relu', input_shape=(self.game.width + 2, self.game.width + 2, 1)))
+        # _model.add(Dropout(0.5))
+        # _model.add(layers.Conv2D(64, (2, 2), activation='relu'))
+        # _model.add(Dropout(0.5))
+        # _model.add(layers.Conv2D(32, (2, 2), activation='relu'))
+        # _model.add(Dropout(0.5))
         # _model.add(layers.Conv2D(32, (3, 3), activation='relu'))
+        # _model.add(Dropout(0.5))
         # _model.add(layers.Flatten())
-        _model.add(layers.Dense(256, activation='relu'))
-        _model.add(layers.Dense(256, activation='relu'))
-        _model.add(layers.Dense(128, activation='relu'))
-        _model.add(layers.Dense(3, activation='softmax'))
-        _model.compile(Adam(0.01), "MSE")
+        # # _model.add(layers.Dense(512, activation='relu', input_dim=(self.game.width + 2) * (self.game.height + 2)))
+        # _model.add(layers.Dense(256, activation='relu'))
+        # _model.add(Dropout(0.5))
+        # # _model.add(BatchNormalization())
+        # _model.add(layers.Dense(128, activation='relu'))
+        # _model.add(Dropout(0.5))
+        # # _model.add(BatchNormalization())
+        # _model.add(layers.Dense(64, activation='relu'))
+        # _model.add(Dropout(0.5))
+        # # _model.add(BatchNormalization())
+        # _model.add(layers.Dense(3, activation='softmax'))
+        # compile model
+        # opt = SGD(lr=0.001, momentum=0.9)
+        # opt = Adam(0.001)
+        # _model.compile(optimizer=opt, loss='binary_crossentropy')
+        _model.add(layers.Conv2D(16, (3, 3), activation='relu', input_shape=(self.game.width + 2, self.game.height + 2, 1)))
+        _model.add(layers.Conv2D(32, nb_row=3, nb_col=3, activation='relu'))
+        # _model.add(layers.Conv2D(32, nb_row=3, nb_col=3, activation='relu'))
+        _model.add(Flatten())
+        # _model.add(Dense(256, activation='relu'))
+        _model.add(Dense(256, activation='relu'))
+        _model.add(Dense(3))
+        _model.compile(RMSprop(), 'MSE')
         return _model
 
     def __train_model(self, game_state_old, action, reward, game_state_new):
-        epochs = 10
+        gamma = 0.9
+        loss = False
+        epochs = 3
         train_x = game_state_old[3]  # Eingabe
         train_y = self.model.predict(game_state_old[3])  # erwarteter Wert bei jeweiliger Eingabe
-        if reward > 0:
-            train_y[:] = np.zeros(3)
-            train_y[:, action] = 1
-            # train_y[0][action] = reward + 0.8 * max(train_y[0])
+        if reward < 0:
+            train_y[:, action] = reward
         else:
-            train_y[:, action] = 0
-            # minimum = min(train_y[0])
-            # if minimum < 0:
-            #     train_y[0][action] = reward + minimum
-            # else:
-            #     train_y[0][action] = reward
+            optimal_future_val = self.model.predict(game_state_new[3])[0].max()
+            train_y[0][action] = reward + gamma * optimal_future_val
 
-        # train_y[0][action] = reward + 0.8 * train_y[0][action]
-        history = self.model.fit(train_x, train_y, epochs=epochs, verbose=0)
-        self.losses = self.losses + history.history['loss']
-
-        # target = reward + 0.9 * np.amax(self.model.predict(next_state[3])[0])
-        # target_f = self.model.predict(state[3])
-        # target_f[0][action] = target
-        # self.model.fit(state[3], target_f, verbose=0)
+        # train_y = np.array(tf.nn.softmax(train_y))
+        history = self.model.fit(train_x, train_y, epochs=1, verbose=0)
+        if loss:
+            self.losses = self.losses + history.history['loss']
 
     def train(self, epochs=10000):
         epsilon = 1.
@@ -68,12 +91,17 @@ class Agent:
 
             if epsilon > .1:
                 # fine tune epsilon
-                epsilon -= .9 / (500 / 2)
+                epsilon -= .9 / (epochs / 2)
+            # else:
+            #     epsilon = 0
 
             # run one game till snake dies
             while self.game.running:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
+                        tmp = range(0, len(self.losses))
+                        plt.plot(tmp, self.losses)
+                        plt.show()
                         pygame.quit()
                         quit()
 
@@ -96,9 +124,8 @@ class Agent:
                 elif state_new[2].score > old_score:
                     reward = len(self.game.snake.snake)
 
-                # TODO: checken ob das okay ist... oder ob 0 mit gamma*x doch berechnet werden soll
-                if reward != 0:
-                    self.__train_model(state_old, final_move, reward, state_new)
+                # if reward != 0:
+                self.__train_model(state_old, final_move, reward, state_new)
 
             # print current state of training
             if counter_games % 10 == 0:
