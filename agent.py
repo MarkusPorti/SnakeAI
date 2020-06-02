@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 class Agent:
     def __init__(self):
         # TODO load model
-        self.game = Game(12, 12, gui=True)
+        self.game = Game(12, 8, gui=True)
         self.model: Model = self.__create_model()
         self.losses = []
 
@@ -50,7 +50,8 @@ class Agent:
         # opt = SGD(lr=0.001, momentum=0.9)
         # opt = Adam(0.001)
         # _model.compile(optimizer=opt, loss='binary_crossentropy')
-        _model.add(layers.Conv2D(16, (3, 3), activation='relu', input_shape=(self.game.width + 2, self.game.height + 2, 1)))
+        _model.add(layers.Conv2D(16, (3, 3), activation='relu', input_shape=(
+            self.game.width + 2, self.game.height + 2, 1)))
         _model.add(layers.Conv2D(32, nb_row=3, nb_col=3, activation='relu'))
         # _model.add(layers.Conv2D(32, nb_row=3, nb_col=3, activation='relu'))
         _model.add(Flatten())
