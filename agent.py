@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 class Agent:
     def __init__(self):
         # TODO load model
-        self.game = Game(12, 12, gui=True)
+        self.game = Game(12, 8, gui=True)
         self.model: Model = self.__create_model()
         self.losses = []
 

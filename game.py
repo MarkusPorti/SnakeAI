@@ -76,14 +76,14 @@ class Game:
     def __get_map(self):
         self.board = np.zeros((self.width + 2, self.height + 2))
         snake = np.asarray(self.snake.snake)
-        self.board[snake[1:, 1] + 1, snake[1:, 0] + 1] = 2 / 3  # body = 1
+        self.board[snake[1:, 0] + 1, snake[1:, 1] + 1] = 2 / 3  # body = 2/3
         if self.running:
             snake = self.snake.snake[0]
-            self.board[snake[1] + 1][snake[0] + 1] = 3 / 3  # head = 1
+            self.board[snake[0] + 1][snake[1] + 1] = 3 / 3  # head = 1
         self.board[:, 0] = 2 / 3  # left wall
         self.board[:, -1] = 2 / 3  # right wall
         self.board[0, :] = 2 / 3  # top wall
         self.board[-1, :] = 2 / 3  # bottom wall
-        self.board[self.food[1] + 1][self.food[0] + 1] = 1 / 3  # food = 0.5
+        self.board[self.food[0] + 1][self.food[1] + 1] = 1 / 3  # food = 1/3
         return self.board.reshape(
             (1, self.width + 2, self.height + 2, 1))  # .reshape((1, (self.width + 2) * (self.height + 2)))
