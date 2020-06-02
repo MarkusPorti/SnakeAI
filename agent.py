@@ -151,3 +151,32 @@ class Agent:
         tmp = range(0, len(self.losses))
         plt.plot(tmp, self.losses)
         plt.show()
+
+    def play_manual(self, rounds=1):
+        for counter_games in range(rounds):
+            print('Game ', counter_games, '\r', end='')
+            self.game.reset_game()
+
+            # run one game till snake dies
+            while self.game.running:
+                self.game.clock.tick(5)
+
+                final_move = 0
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        quit()
+
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_UP:
+                            final_move = 0
+                        elif event.key == pygame.K_LEFT:
+                            final_move = 1
+                        elif event.key == pygame.K_RIGHT:
+                            final_move = 2
+                        break
+
+                self.game.step(final_move)
+
+        pygame.quit()
+        quit()
