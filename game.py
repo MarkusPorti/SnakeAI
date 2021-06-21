@@ -12,7 +12,7 @@ class Game:
         self.width = width
         self.height = height
         self.board = np.ones((width, height), dtype=int)  # complete Board
-        self.moves_left = width * height
+        # self.moves_left = width * height
         self.snake = Snake(self.width, self.height, self.pixel)
         self.food = ()
         self.generate_food()
@@ -22,7 +22,7 @@ class Game:
             self.render_init()
 
     def reset_game(self):
-        self.moves_left = self.width * self.height
+        # self.moves_left = self.width * self.height
         self.snake.reset()
         self.food = []
         self.generate_food()
@@ -43,19 +43,17 @@ class Game:
 
         text_score = self.font.render("Score: " + str(self.snake.score), True, (0, 0, 0))
         self.dis.blit(text_score, (5, 0))
-        text_score = self.font.render("Moves left: " + str(self.moves_left), True, (0, 0, 0))
-        self.dis.blit(text_score, (5, 20))
+        # text_score = self.font.render("Moves left: " + str(self.moves_left), True, (0, 0, 0))
+        # self.dis.blit(text_score, (5, 20))
         pygame.display.update()
 
     def step(self, move):
+        self.clock.tick(120)
         result = self.snake.step(move, self.food)
-        if result == 0:
-            self.moves_left -= 1
 
-        if result == -1 or self.moves_left <= 0:
+        if result == -1:
             self.running = False
         elif result == 1:
-            self.moves_left = self.width * self.height
             self.generate_food()
         if self.gui:
             # Thread(target=self.render).start()
@@ -71,7 +69,7 @@ class Game:
         self.food = food
 
     def get_state(self):
-        return self.running, self.moves_left, self.snake, self.__get_map()
+        return self.running, self.snake, self.__get_map()
 
     def __get_map(self):
         self.board = np.zeros((self.width + 2, self.height + 2))
