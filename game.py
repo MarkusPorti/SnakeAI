@@ -27,6 +27,7 @@ class Game:
         self.food = []
         self.generate_food()
         self.running = True
+        return self.get_state(0)
 
     def render_init(self):
         pygame.init()
@@ -41,24 +42,30 @@ class Game:
                          [self.food[0] * self.pixel, self.food[1] * self.pixel, self.pixel, self.pixel])
         self.snake.render(self.dis)
 
-        text_score = self.font.render("Score: " + str(self.snake.score), True, (0, 0, 0))
-        self.dis.blit(text_score, (5, 0))
+        # text_score = self.font.render("Score: " + str(self.snake.score), True, (0, 0, 0))
+        # self.dis.blit(text_score, (5, 0))
         # text_score = self.font.render("Moves left: " + str(self.moves_left), True, (0, 0, 0))
         # self.dis.blit(text_score, (5, 20))
         pygame.display.update()
 
     def step(self, move):
-        self.clock.tick(120)
         result = self.snake.step(move, self.food)
 
+        reward = 0
         if result == -1:
+            reward = -100
             self.running = False
         elif result == 1:
+            reward = 10
             self.generate_food()
+
         if self.gui:
             # Thread(target=self.render).start()
             self.render()
-        return self.get_state()
+        return self.get_state(reward)
+
+    def step_random(self):
+        return np.random.randint(len(self.snake.possible_actions))
 
     def generate_food(self):
         food = ()
@@ -68,20 +75,23 @@ class Game:
                 food = ()
         self.food = food
 
-    def get_state(self):
-        return self.running, self.snake, self.__get_map()
+    def get_state(self, reward):
+        return self.__get_map(), reward, not self.running
 
     def __get_map(self):
         self.board = np.zeros((self.width + 2, self.height + 2))
         snake = np.asarray(self.snake.snake)
-        self.board[snake[1:, 0] + 1, snake[1:, 1] + 1] = 2 / 3  # body = 2/3
+        self.board[snake[1:, 0] + 1, snake[1:, 1] + 1] = 1  # body = 1
         if self.running:
             snake = self.snake.snake[0]
-            self.board[snake[0] + 1][snake[1] + 1] = 3 / 3  # head = 1
-        self.board[:, 0] = 2 / 3  # left wall
-        self.board[:, -1] = 2 / 3  # right wall
-        self.board[0, :] = 2 / 3  # top wall
-        self.board[-1, :] = 2 / 3  # bottom wall
-        self.board[self.food[0] + 1][self.food[1] + 1] = 1 / 3  # food = 1/3
+            self.board[snake[0] + 1][snake[1] + 1] = 2 / 3  # head = 2/3
+        self.board[:, 0] = 1  # left wall
+        self.board[:, -1] = 1  # right wall
+        self.board[0, :] = 1  # top wall
+        self.board[-1, :] = 1  # bottom wall
+        self.board[self.food[0] + 1][self.food[1] + 1] = 4 / 5  # food = 4/5
         return self.board.reshape(
             (1, self.width + 2, self.height + 2, 1))  # .reshape((1, (self.width + 2) * (self.height + 2)))
+
+    def get_input_shape(self):
+        return self.width + 2, self.height + 2, 1

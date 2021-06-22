@@ -9,45 +9,35 @@ class Snake:
         self.color_head = (0, 150, 0)
         self.color_body = (25, 200, 25)
 
-        self.score = 0
+        # DOWN, UP, RIGHT, LEFT, NONE
+        self.possible_actions = ((0, 1), (0, -1), (1, 0), (-1, 0))
+        self.forbidden_actions = {
+            (0, 1): (0, -1),
+            (0, -1): (0, 1),
+            (1, 0): (-1, 0),
+            (-1, 0): (1, 0)
+        }
 
-        self.direction = 0
+        self.score = 0
+        self.action = (-1, 0)
         self.snake = [(x, y)]
         for i in range(1, 3):
             self.snake.append((x, y + i))
 
     def reset(self, x=4, y=4):
         self.score = 0
-        self.direction = 0
+        self.action = (-1, 0)
         self.snake = [(x, y)]
         for i in range(1, 3):
             self.snake.append((x, y + i))
 
-    def step(self, move, food):
-        # 0 - straight
-        # 1 - left
-        # 2 - right
-        if move == 1:
-            if self.direction > 0:
-                self.direction -= 1
-            else:
-                self.direction = 3
-
-        if move == 2:
-            if self.direction < 3:
-                self.direction += 1
-            else:
-                self.direction = 0
+    def step(self, move: int, food):
+        new_action = self.possible_actions[move]
+        if self.forbidden_actions[new_action] != self.action:
+            self.action = new_action
 
         head = self.snake[0]
-        if self.direction == 0:
-            head = (self.snake[0][0], self.snake[0][1] - 1)
-        elif self.direction == 1:
-            head = (self.snake[0][0] + 1, self.snake[0][1])
-        elif self.direction == 2:
-            head = (self.snake[0][0], self.snake[0][1] + 1)
-        elif self.direction == 3:
-            head = (self.snake[0][0] - 1, self.snake[0][1])
+        head = (head[0] + self.action[0], head[1] + self.action[1])
         self.snake.insert(0, head)
 
         if self.eat(food):
