@@ -37,6 +37,7 @@ class Game:
         self.render()
 
     def render(self):
+        # self.clock.tick(120)
         self.dis.fill((255, 255, 255))
         pygame.draw.rect(self.dis, self.food_color,
                          [self.food[0] * self.pixel, self.food[1] * self.pixel, self.pixel, self.pixel])
@@ -51,12 +52,12 @@ class Game:
     def step(self, move):
         result = self.snake.step(move, self.food)
 
-        reward = 0
+        reward = 0.001
         if result == -1:
-            reward = -100
+            reward = -10
             self.running = False
         elif result == 1:
-            reward = 10
+            reward = 1
             self.generate_food()
 
         if self.gui:

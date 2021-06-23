@@ -14,13 +14,13 @@ from game import Game
 class Agent:
     def __init__(self):
         self.gamma = 0.99
-        self.batch_size = 32
+        self.batch_size = 100
         self.learning_rate = 1e-4
         self.eps_start = 1.
-        self.eps_decacy = .999985
+        self.eps_decacy = .999955
         self.eps_min = .02
 
-        self.exp_buffer = ExperienceReplay(capacity=500)
+        self.exp_buffer = ExperienceReplay(capacity=2500)
         self.env = Game(12, 8, gui=True)
         self.model: Model = self.__create_model()
         self.losses = []
@@ -41,13 +41,14 @@ class Agent:
         _model.compile(RMSprop(), 'MSE')
         return _model
 
-    def train(self, epochs=5000):
+    def train(self, epochs=10000):
         epsilon = self.eps_start
         total_rewards = []
 
         for frame_idx in range(epochs):
             # print('Simulation: ', frame_idx, '\tScore: ', max_score, end='\r')
-            epsilon = max(epsilon * self.eps_start, self.eps_min)
+            # if epsilon > self.eps_min:
+            #     epsilon -= .9 / (epochs / 2)
 
             # run one game till snake dies
             while self.env.running:
@@ -56,31 +57,36 @@ class Agent:
                         pygame.quit()
                         quit()
 
+                epsilon = max(epsilon * self.eps_decacy, self.eps_min)
+
+                # total reward for this game
                 reward = self.__play_step(epsilon)
 
                 if reward is not None:
                     total_rewards.append(reward)
                     mean_reward = np.mean(total_rewards[-100:])
-                    print("Epoche %d: %d Spiele, avg. reward %.3f, (epsilon %.2f)" %
-                          (frame_idx, len(total_rewards), mean_reward, epsilon))
+                    print("Epoche %d: avg. reward %.3f, (epsilon %.4f)" %
+                          (frame_idx, mean_reward, epsilon))
 
             self._reset()
 
             if len(self.exp_buffer) < self.batch_size:
                 continue
 
-            tic = time.perf_counter()
+            # tic = time.perf_counter()
             minibatch = self.exp_buffer.sample(self.batch_size)
+            states = []
+            targets = []
             for state, action, reward, done, next_state in minibatch:
                 target = reward
                 if not done:
                     target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
                 target_f = self.model.predict(state)
                 target_f[0][np.argmax(action)] = target
-                # tac = time.perf_counter()
-                self.model.fit(state, target_f, epochs=1, verbose=0)
-                # print("Fit solo took %.4fs" % (time.perf_counter() - tac))
-            print("Train/Fit Model took %.4fs" % (time.perf_counter() - tic), end='\n\n')
+                states.append(state.reshape(self.env.get_input_shape()))
+                targets.append(target_f[0])
+            self.model.train_on_batch(np.array(states), np.array(targets))
+            # print("Train/Fit Model took %.4fs" % (time.perf_counter() - tic), end='\n\n')
 
         # save current weights of self.model
         self.model.save_weights('checkpoints/my_checkpoint')
