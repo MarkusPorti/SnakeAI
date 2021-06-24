@@ -7,8 +7,8 @@ import torch
 from model import DQN, QTrainer
 
 DEVICE = torch.device("cpu")
-MAX_MEMORY = 100_000
-BATCH_SIZE = 1000
+MAX_MEMORY = 2_048
+BATCH_SIZE = 128
 LR = 0.001
 
 
@@ -38,8 +38,8 @@ class Agent:
 
         states, actions, rewards, next_states, dones = zip(*mini_sample)
         self.trainer.train_step(states, actions, rewards, next_states, dones)
-        # for state, action, reward, nexrt_state, done in mini_sample:
-        #    self.trainer.train_step(state, action, reward, next_state, done)
+        # for state, action, reward, next_state, done in mini_sample:
+        #     self.trainer.train_step(state, action, reward, next_state, done)
 
     def train_short_memory(self, state, action, reward, next_state, done):
         self.trainer.train_step(state, action, reward, next_state, done)
