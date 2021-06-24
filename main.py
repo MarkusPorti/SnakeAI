@@ -6,6 +6,7 @@ from agent import Agent
 from helper import plot
 from model import DQN
 import torch
+from torchsummary import summary
 import torch.nn as nn        # Pytorch neural network package
 import torch.optim as optim  # Pytorch optimization package
 
@@ -30,6 +31,8 @@ def train(epochs=10000):
 
             # perform move and get new state
             state_new, reward, done, info = game.step(final_move)
+
+            game.render()
 
             # train short memory
             agent.train_short_memory(state_old, final_move, reward, state_new, done)
@@ -77,9 +80,20 @@ def test_net():
     print(net)
 
 
+def net_summary():
+    env = gym.make('BasicSnake-rgb-16-v0')
+    state = env.reset()
+    state = torch.tensor(state, dtype=torch.float)
+    net = DQN(env.observation_space.shape, env.action_space.n).to(device)
+    summary(net, state.shape)
+    pred = net(state)
+    print("Prediction %.4f" % pred)
+
+
 if __name__ == "__main__":
     # test_net()
-    train()
+    net_summary()
+    # train()
     # agent = Agent()
     # # play_manual()
     # agent.train()
