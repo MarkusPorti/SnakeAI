@@ -8,17 +8,17 @@ from helper import plot
 from model import DQN, QTrainer
 from snake_game import SnakeGameAI
 
-DEVICE = torch.device("cpu")
-MAX_MEMORY = 1_024
-BATCH_SIZE = 64
-LR = 0.01
+DEVICE = torch.device("cuda")
+MAX_MEMORY = 100_000
+BATCH_SIZE = 1000
+LR = 0.001
 
 
 class Agent:
     def __init__(self, observation_shape):
         self.gamma = 0.9
         self.epsilon = 1.
-        self.eps_decacy = .9998
+        self.eps_decacy = .99995
         self.eps_min = .05
 
         self.n_games = 0
@@ -34,7 +34,7 @@ class Agent:
         if np.random.random() < self.epsilon:
             move = random.randint(0, 2)
         else:
-            state0 = torch.tensor(state, dtype=torch.float)
+            state0 = torch.tensor(state, dtype=torch.float).to(DEVICE)
             prediction = self.model(state0)
             move = torch.argmax(prediction).item()
 
@@ -72,7 +72,7 @@ def train():
         state_old = game.get_state()
 
         # get move
-        final_move = agent.get_action(state_old)  # [0, 0, 1, 0]
+        final_move = agent.get_action(state_old)  # [0, 0, 1]
 
         # perform move and get new state
         reward, done, score = game.play_step(final_move)

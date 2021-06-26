@@ -11,19 +11,15 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
 
         self.conv = nn.Sequential(
-            nn.Conv2d(input_shape[0], 32, (2, 2)),
+            nn.Conv2d(input_shape[0], 128, (2, 2)),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=(2, 2)),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=(1, 1)),
-            nn.ReLU()
         )
 
         conv_out_size = self._get_conv_out(input_shape)
         self.fc = nn.Sequential(
-            nn.Linear(conv_out_size, 512),
+            nn.Linear(conv_out_size, 256),
             nn.ReLU(),
-            nn.Linear(512, n_actions)
+            nn.Linear(256, n_actions)
         )
 
     def _get_conv_out(self, shape):
@@ -54,18 +50,19 @@ class QTrainer:
         self.loss = nn.MSELoss()
 
     def train_step(self, states, actions, rewards, next_states, dones):
-        states = torch.tensor(states, dtype=torch.float)
-        actions = torch.tensor(actions, dtype=torch.float)
-        rewards = torch.tensor(rewards, dtype=torch.long)
-        next_states = torch.tensor(next_states, dtype=torch.float)
+        from agent import DEVICE
+        states = torch.tensor(states, dtype=torch.float).to(DEVICE)
+        actions = torch.tensor(actions, dtype=torch.float).to(DEVICE)
+        rewards = torch.tensor(rewards, dtype=torch.long).to(DEVICE)
+        next_states = torch.tensor(next_states, dtype=torch.float).to(DEVICE)
         # (n, x)
 
         if len(states.shape) == 3:
             # (1, x)
-            states = torch.unsqueeze(states, 0)
-            actions = torch.unsqueeze(actions, 0)
-            rewards = torch.unsqueeze(rewards, 0)
-            next_states = torch.unsqueeze(next_states, 0)
+            states = torch.unsqueeze(states, 0).to(DEVICE)
+            actions = torch.unsqueeze(actions, 0).to(DEVICE)
+            rewards = torch.unsqueeze(rewards, 0).to(DEVICE)
+            next_states = torch.unsqueeze(next_states, 0).to(DEVICE)
             dones = (dones,)
 
         # 1: predicted Q values with current state
