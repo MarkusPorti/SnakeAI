@@ -11,9 +11,9 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
 
         self.conv = nn.Sequential(
-            nn.Conv2d(input_shape[0], 16, (2, 2)),
+            nn.Conv2d(input_shape[0], 32, (2, 2)),
             nn.ReLU(),
-            nn.Conv2d(16, 64, kernel_size=(2, 2)),
+            nn.Conv2d(32, 64, kernel_size=(2, 2)),
             nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=(1, 1)),
             nn.ReLU()
@@ -36,12 +36,12 @@ class DQN(nn.Module):
         conv_out = self.conv(x).view(x.size()[0], -1)
         return self.fc(conv_out)
 
-    def save(self, file_name='model.pth'):
-        model_folder_path = './model'
+    def save(self, max_score, file_name='model'):
+        model_folder_path = './models'
         if not os.path.exists(model_folder_path):
             os.makedirs(model_folder_path)
 
-        file_name = os.path.join(model_folder_path, file_name)
+        file_name = os.path.join(model_folder_path, file_name + str(max_score) + '.pth')
         torch.save(self.state_dict(), file_name)
 
 
@@ -51,42 +51,35 @@ class QTrainer:
         self.gamma = gamma
         self.model = model
         self.optimizer = optim.Adam(model.parameters(), lr=self.lr)
-        self.criterion = nn.MSELoss()
+        self.loss = nn.MSELoss()
 
     def train_step(self, states, actions, rewards, next_states, dones):
         states = torch.tensor(states, dtype=torch.float)
+        actions = torch.tensor(actions, dtype=torch.float)
+        rewards = torch.tensor(rewards, dtype=torch.long)
         next_states = torch.tensor(next_states, dtype=torch.float)
-        actions = torch.tensor(actions, dtype=torch.long)
-        rewards = torch.tensor(rewards, dtype=torch.float)
-        dones = torch.tensor(dones, dtype=torch.bool)
         # (n, x)
 
-        # 1: predicted Q values with current states
-        preds = self.model(states)
+        if len(states.shape) == 3:
+            # (1, x)
+            states = torch.unsqueeze(states, 0)
+            actions = torch.unsqueeze(actions, 0)
+            rewards = torch.unsqueeze(rewards, 0)
+            next_states = torch.unsqueeze(next_states, 0)
+            dones = (dones,)
 
-        if dones.dim() == 0:
-            # keine Liste aus items, sondern nur 1 Item gegeben!
-            targets = preds.clone()
-            q_new = rewards.item()
-            if not dones.item():
-                q_new = rewards.item() + self.gamma * torch.max(self.model(next_states))
+        # 1: predicted Q values with current state
+        predictions = self.model(states)
 
-            targets[0][torch.argmax(actions)] = q_new
-        else:
-            targets = preds.clone()
-            for idx in range(len(dones)):
-                q_new = rewards[idx]
-                if not dones[idx]:
-                    q_new = rewards[idx] + self.gamma * torch.max(self.model(next_states[idx]))
+        # 2: Q_new = r + y * max(next_predicted Q value)
+        targets = predictions.clone()
+        for idx in range(len(dones)):
+            q_new = rewards[idx]
+            if not dones[idx]:
+                q_new = rewards[idx] + self.gamma * torch.max(self.model(next_states[idx]))
+            targets[idx][torch.argmax(actions[idx])] = q_new
 
-                targets[idx][torch.argmax(actions[idx])] = q_new
-
-        # 2: q_new = r + y * max(next_predicted Q value) -> only do this if not done
-        # preds.clone()
-        # preds[argmax(action)] = q_new
         self.optimizer.zero_grad()
-        loss = self.criterion(targets, preds)
+        loss = self.loss(targets, predictions)
         loss.backward()
-
         self.optimizer.step()
-
