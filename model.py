@@ -11,15 +11,22 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
 
         self.conv = nn.Sequential(
-            nn.Conv2d(input_shape[0], 128, (2, 2)),
+            nn.Conv2d(input_shape[0], 8, (2, 2), padding=1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.Conv2d(8, 16, (2, 2), padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, (2, 2), padding=1),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
         )
 
         conv_out_size = self._get_conv_out(input_shape)
         self.fc = nn.Sequential(
-            nn.Linear(conv_out_size, 256),
+            nn.Linear(conv_out_size, 32),
             nn.ReLU(),
-            nn.Linear(256, n_actions)
+            nn.Linear(32, n_actions)
         )
 
     def _get_conv_out(self, shape):

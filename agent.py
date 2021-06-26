@@ -4,14 +4,14 @@ from collections import deque
 import numpy as np
 import torch
 
-from helper import plot
+import helper
 from model import DQN, QTrainer
 from snake_game import SnakeGameAI
 
 DEVICE = torch.device("cuda")
 MAX_MEMORY = 100_000
-BATCH_SIZE = 1000
-LR = 0.001
+BATCH_SIZE = 1028
+LR = 0.0001
 
 
 class Agent:
@@ -100,7 +100,7 @@ def train():
             plot_scores.append(score)
             total_score += score
             plot_mean_scores.append(total_score / agent.n_games)
-            plot(plot_scores, plot_mean_scores)
+            helper.plot(plot_scores, plot_mean_scores)
 
 
 if __name__ == '__main__':

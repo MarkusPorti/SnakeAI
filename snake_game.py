@@ -31,7 +31,7 @@ SPEED = 180
 
 
 class SnakeGameAI:
-    def __init__(self, width=18, height=18):
+    def __init__(self, width=14, height=14):
         self.clock = pygame.time.Clock()
         self.width = width
         self.height = height
@@ -80,13 +80,13 @@ class SnakeGameAI:
         reward = 0
         if self.is_collision() or self.frame > 100 * len(self.snake):
             self.running = False
-            reward = -10
+            reward = -1
             return reward, not self.running, self.score
 
         # 4. place new food or just move
         if self.head == self.food:
             self.score += 1
-            reward = 10
+            reward = self.score
             self.__generate_food()
         else:
             self.snake.pop()
@@ -139,16 +139,16 @@ class SnakeGameAI:
         return False
 
     def get_state(self):
-        board = np.zeros((self.width + 2, self.height + 2))
+        board = np.ones((self.width + 2, self.height + 2))
         snake = np.asarray(self.snake)
-        board[snake[1:, 0] + 1, snake[1:, 1] + 1] = 1  # body = 1
+        board[snake[1:, 0] + 1, snake[1:, 1] + 1] = 128  # body = 1
         if self.running:
-            board[self.head[0] + 1][self.head[1] + 1] = 2 / 3  # head = 2/3
-        board[:, 0] = 1  # left wall
-        board[:, -1] = 1  # right wall
-        board[0, :] = 1  # top wall
-        board[-1, :] = 1  # bottom wall
-        board[self.food[0] + 1][self.food[1] + 1] = 4 / 5  # food = 4/5
+            board[self.head[0] + 1][self.head[1] + 1] = 96  # head = 2/3
+        board[:, 0] = 255  # left wall
+        board[:, -1] = 255  # right wall
+        board[0, :] = 255  # top wall
+        board[-1, :] = 255  # bottom wall
+        board[self.food[0] + 1][self.food[1] + 1] = 48  # food = 4/5
         return board.reshape(self.get_observation_shape())  # .reshape((1, (self.width + 2) * (self.height + 2)))
 
     def get_observation_shape(self):
