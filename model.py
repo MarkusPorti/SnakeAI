@@ -1,43 +1,22 @@
 import os
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
 
 class DQN(nn.Module):
-    def __init__(self, input_shape, n_actions):
+    def __init__(self, input_size, output_size):
         super(DQN, self).__init__()
 
-        self.conv = nn.Sequential(
-            nn.Conv2d(input_shape[0], 8, (2, 2), padding=1),
-            nn.BatchNorm2d(8),
+        self.linear = nn.Sequential(
+            nn.Linear(input_size, 256),
             nn.ReLU(),
-            nn.Conv2d(8, 16, (2, 2), padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
-            nn.Conv2d(16, 32, (2, 2), padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
+            nn.Linear(256, output_size)
         )
-
-        conv_out_size = self._get_conv_out(input_shape)
-        self.fc = nn.Sequential(
-            nn.Linear(conv_out_size, 32),
-            nn.ReLU(),
-            nn.Linear(32, n_actions)
-        )
-
-    def _get_conv_out(self, shape):
-        o = self.conv(torch.zeros(1, *shape))
-        return int(np.prod(o.size()))
 
     def forward(self, x):
-        if len(x.shape) < 4:
-            x = x[None, ...]
-        conv_out = self.conv(x).view(x.size()[0], -1)
-        return self.fc(conv_out)
+        return self.linear(x)
 
     def save(self, max_score, file_name='model'):
         model_folder_path = './models'
@@ -64,7 +43,7 @@ class QTrainer:
         next_states = torch.tensor(next_states, dtype=torch.float).to(DEVICE)
         # (n, x)
 
-        if len(states.shape) == 3:
+        if len(states.shape) == 1:
             # (1, x)
             states = torch.unsqueeze(states, 0).to(DEVICE)
             actions = torch.unsqueeze(actions, 0).to(DEVICE)

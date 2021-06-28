@@ -8,22 +8,22 @@ import helper
 from model import DQN, QTrainer
 from snake_game import SnakeGameAI
 
-DEVICE = torch.device("cuda")
-MAX_MEMORY = 100_000
-BATCH_SIZE = 1028
+DEVICE = torch.device("cpu")
+MAX_MEMORY = 16_384
+BATCH_SIZE = 2048
 LR = 0.0001
 
 
 class Agent:
-    def __init__(self, observation_shape):
-        self.gamma = 0.9
-        self.epsilon = 1.
-        self.eps_decacy = .99995
-        self.eps_min = .05
+    def __init__(self):
+        self.gamma = 0.95
+        self.epsilon = .7
+        self.eps_decacy = .9998
+        self.eps_min = .03
 
         self.n_games = 0
         self.memory = deque(maxlen=MAX_MEMORY)
-        self.model = DQN(observation_shape, 3).to(DEVICE)
+        self.model = DQN(20, 3).to(DEVICE)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
         print(self.model)
 
@@ -61,11 +61,12 @@ class Agent:
 def train():
     plot_scores = []
     plot_mean_scores = []
+    plot_short_mean_scores = []
     total_score = 0
     record_score = 0
 
     game = SnakeGameAI()
-    agent = Agent(game.get_observation_shape())
+    agent = Agent()
 
     while True:
         # get old/current state
@@ -100,7 +101,8 @@ def train():
             plot_scores.append(score)
             total_score += score
             plot_mean_scores.append(total_score / agent.n_games)
-            helper.plot(plot_scores, plot_mean_scores)
+            plot_short_mean_scores.append(sum(plot_scores[-25:]) / 25)
+            helper.plot(plot_scores, plot_mean_scores, plot_short_mean_scores)
 
 
 if __name__ == '__main__':
