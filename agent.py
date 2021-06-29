@@ -9,17 +9,17 @@ from model import DQN, QTrainer
 from snake_game import SnakeGameAI
 
 DEVICE = torch.device("cpu")
-MAX_MEMORY = 16_384
-BATCH_SIZE = 2048
+MAX_MEMORY = 100_000
+BATCH_SIZE = 2000
 LR = 0.0001
 
 
 class Agent:
     def __init__(self):
-        self.gamma = 0.95
-        self.epsilon = .7
-        self.eps_decacy = .9998
-        self.eps_min = .03
+        self.gamma = 0.7
+        self.epsilon = 0.5
+        self.eps_decacy = 0.00003
+        self.eps_min = 0.001
 
         self.n_games = 0
         self.memory = deque(maxlen=MAX_MEMORY)
@@ -29,7 +29,7 @@ class Agent:
 
     def get_action(self, state):
         # random moves: tradeoff exploration / exploitation
-        self.epsilon = max(self.epsilon * self.eps_decacy, self.eps_min)
+        self.epsilon = max(self.epsilon - self.eps_decacy, self.eps_min)
         final_move = [0, 0, 0]
         if np.random.random() < self.epsilon:
             move = random.randint(0, 2)

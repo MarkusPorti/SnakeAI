@@ -24,6 +24,8 @@ WHITE = (255, 255, 255)
 RED = (200, 0, 0)
 BLUE1 = (0, 0, 255)
 BLUE2 = (0, 100, 255)
+GREEN1 = (0, 255, 0)
+GREEN2 = (100, 255, 0)
 
 BLOCK_SIZE = 20
 SPEED = 180
@@ -220,9 +222,10 @@ class SnakeGameAI:
     def __render(self):
         self.display.fill(BLACK)
 
-        for pt in self.snake:
-            pygame.draw.rect(self.display, BLUE1,
-                             pygame.Rect(pt.x * BLOCK_SIZE, pt.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+        pygame.draw.rect(self.display, GREEN1, pygame.Rect(self.head.x * BLOCK_SIZE, self.head.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+        pygame.draw.rect(self.display, GREEN2, pygame.Rect(self.head.x * BLOCK_SIZE + 4, self.head.y * BLOCK_SIZE + 4, 12, 12))
+        for pt in self.snake[1:]:
+            pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x * BLOCK_SIZE, pt.y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
             pygame.draw.rect(self.display, BLUE2, pygame.Rect(pt.x * BLOCK_SIZE + 4, pt.y * BLOCK_SIZE + 4, 12, 12))
 
         pygame.draw.rect(self.display, RED,
