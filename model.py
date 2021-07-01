@@ -3,6 +3,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 
 
 class DQN(nn.Module):
@@ -10,11 +11,9 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
 
         self.linear = nn.Sequential(
-            nn.Linear(input_size, 256),
+            nn.Linear(input_size, 324),
             nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Linear(128, output_size)
+            nn.Linear(324, output_size)
         )
 
     def forward(self, x):
@@ -31,13 +30,15 @@ class DQN(nn.Module):
 
 class QTrainer:
     def __init__(self, model, lr, gamma):
+        from agent import LOG_VERSION
         self.lr = lr
         self.gamma = gamma
         self.model = model
         self.optimizer = optim.Adam(model.parameters(), lr=self.lr)
         self.loss = nn.MSELoss()
+        self.writer = SummaryWriter(log_dir="runs/round_3/" + LOG_VERSION)
 
-    def train_step(self, states, actions, rewards, next_states, dones):
+    def train_step(self, states, actions, rewards, next_states, dones, epoch=0):
         from agent import DEVICE
         states = torch.tensor(states, dtype=torch.float).to(DEVICE)
         actions = torch.tensor(actions, dtype=torch.float).to(DEVICE)
@@ -64,7 +65,8 @@ class QTrainer:
                 q_new = rewards[idx] + self.gamma * torch.max(self.model(next_states[idx]))
             targets[idx][torch.argmax(actions[idx])] = q_new
 
-        self.optimizer.zero_grad()
         loss = self.loss(targets, predictions)
+        self.writer.add_scalar("Metrics/loss", loss, epoch)
+        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()

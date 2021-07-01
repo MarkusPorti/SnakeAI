@@ -25,10 +25,10 @@ RED = (200, 0, 0)
 BLUE1 = (0, 0, 255)
 BLUE2 = (0, 100, 255)
 GREEN1 = (0, 255, 0)
-GREEN2 = (100, 255, 0)
+GREEN2 = (0, 100, 0)
 
 BLOCK_SIZE = 20
-SPEED = 180
+SPEED = 500
 
 
 class SnakeGameAI:
@@ -190,9 +190,9 @@ class SnakeGameAI:
             self.direction == Direction.DOWN,
 
             # Danger 2.
-            dangers_straight[0], dangers_straight[1], dangers_straight[2],
-            dangers_right[0], dangers_right[1], dangers_right[2],
-            dangers_left[0], dangers_left[1], dangers_left[2],
+            dangers_left[2], dangers_left[0],
+            dangers_straight[2], dangers_straight[0], dangers_straight[1],
+            dangers_right[0], dangers_right[1],
 
             # Food location
             self.food.x < self.head.x,  # food left
