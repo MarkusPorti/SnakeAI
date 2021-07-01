@@ -17,8 +17,8 @@ LR = 0.0001
 class Agent:
     def __init__(self):
         self.gamma = 0.8
-        self.epsilon = 0.4
-        self.eps_decacy = 0.000025
+        self.eps_max = 0.4
+        self.eps_decacy = 0.0025
         self.eps_min = 0
 
         self.n_games = 0
@@ -29,7 +29,7 @@ class Agent:
 
     def get_action(self, state, epoch):
         # random moves: tradeoff exploration / exploitation
-        self.epsilon = max(self.epsilon - self.eps_decacy, self.eps_min)
+        self.epsilon = max(self.eps_max - self.eps_decacy * epoch, self.eps_min)
         self.trainer.writer.add_scalar("Metrics/epsilon", self.epsilon, epoch)
         final_move = [0, 0, 0]
         if np.random.random() < self.epsilon:
