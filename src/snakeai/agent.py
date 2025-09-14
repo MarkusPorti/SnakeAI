@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from model import DQN, QTrainer
-from snake_game import SnakeGameAI
+from snakeai.ui.snake_game import SnakeGameAI
 
 LOG_VERSION = "Try_10_(18_324)"
 DEVICE = torch.device("cpu")
