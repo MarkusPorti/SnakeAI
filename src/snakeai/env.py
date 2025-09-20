@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from enum import Enum
+from random import randint
 from typing import Any, SupportsFloat
 
-import numpy as np
 import gymnasium as gym
-from random import randint
-
+import numpy as np
+import pygame
 from gymnasium import spaces
-from gymnasium.core import ObsType, ActType
+from gymnasium.core import ObsType, ActType, RenderFrame
 
 
 class Direction(Enum):
@@ -16,13 +16,16 @@ class Direction(Enum):
     DOWN = 2
     LEFT = 3
 
+    def opposite(self) -> "Direction":
+        if self.value < 2:
+            return Direction(self.value + 2)
+        return Direction(self.value - 2)
+
 
 class FieldType(Enum):
-    WALL = 0
-    GRASS = 1
-    FOOD = 2
-    SNAKE_HEAD = 3
-    SNAKE_BODY = 4
+    FOOD = 0
+    SNAKE_HEAD = 1
+    SNAKE_BODY = 2
 
 
 @dataclass(frozen=True)
@@ -34,6 +37,7 @@ class FieldPoint:
 class Snake:
     head: FieldPoint
     body: list[FieldPoint]
+    direction: Direction
 
     def __init__(self, x: int, y: int):
         self.reset(x, y)
@@ -44,9 +48,12 @@ class Snake:
             FieldPoint(x=x - 1, y=y),
             FieldPoint(x=x - 2, y=y),
         ]
+        self.direction = Direction.RIGHT
 
     def step(self, action: Direction, food: FieldPoint, width: int, height: int):
         # Move into the direction.
+        self.direction = action
+
         # 1. The old head becomes part of the body
         self.body.insert(0, self.head)
 
@@ -62,24 +69,23 @@ class Snake:
         else:
             raise ValueError(f"Invalid action. Must be one of {list(Direction)}")
 
-        # 3. If no food was eaten: shorten the snakes tail
-        if self.head != food:
-            self.body.pop()
-        else:
-            # We swallowed an apple.
-            # There is no chance this was a collision
+        # 3. Swallowed an apple? Good job.
+        if self.head == food:
             return 1
 
         # Now check for any collisions
+        self.body.pop()
         if (
             self.head.x == -1
             or self.head.y == -1
             or self.head.x == width
             or self.head.y == height
-            or self.head in self.body
         ):
-            # We are our of the board or have eaten our body
+            # We are out of the board
             return -1
+
+        if self.head in self.body:
+            return -2
 
         # Nothing special happened
         return 0
@@ -89,18 +95,38 @@ class Snake:
 
 
 class SnakeEnvironment(gym.Env):
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
+
+    # Fields for the actual Game / State
     snake: Snake
     food: FieldPoint | None
     score: int
+    health: int
 
-    def __init__(self, width: int = 18, height: int = 18):
+    # Fields for rendering
+    window: pygame.Surface | None = None
+    clock: pygame.time.Clock | None = None
+    block_size: int = 30
+    COLORS: dict[str, pygame.Color] = {
+        "background": (20, 30, 20),
+        "grass": (40, 150, 40),
+        "wall": (100, 100, 100),
+        "food": (200, 50, 50),
+        "snake_head": (50, 255, 50),
+        "snake_body": (40, 200, 40),
+    }
+
+    def __init__(self, width: int = 18, height: int = 18, render_mode: str = None):
         super().__init__()
         self.width = width
         self.height = height
+        self.render_mode = render_mode
+        self.window_width = self.width * self.block_size
+        self.window_height = self.height * self.block_size
 
         self.action_space = spaces.Discrete(n=len(Direction))
         self.observation_space = spaces.MultiBinary(
-            n=[self.width + 2, self.height + 2, len(FieldType)]
+            n=[len(FieldType), self.width, self.height]
         )
 
         self.snake = Snake(x=self.width // 2, y=self.height // 2)
@@ -109,36 +135,42 @@ class SnakeEnvironment(gym.Env):
     def step(
         self, action: ActType
     ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-
+        action = Direction(action)
         result = self.snake.step(action, self.food, self.width, self.height)
-        reward = self.calc_reward(result)
 
+        self.health -= 1
         if result == 1:
             self.food = self._generate_food()
+            self.health += 30
+            self.score += 1
 
-        terminated = result == -1
-        return self.get_observation(), reward, terminated, False, {}
+        reward = self.calc_reward(result)
 
-    @staticmethod
-    def calc_reward(step_result: int) -> float:
-        reward = 0.0
+        terminated = result < 0
+        truncated = self.health <= 0
+        return self._get_obs(head_in_wall=result==-1), reward, terminated, truncated, {}
+
+    def calc_reward(self, step_result: int) -> float:
+        reward = 0
         if step_result == 1:
-            reward += 1
+            reward += self.score * 3
         elif step_result == 0:
-            reward += 0.001
-        elif step_result == -1:
-            reward = -20
+            reward -= 0.0001
+        elif step_result < 0:
+            reward = -1
         return reward
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[ObsType, dict[str, Any]]:
+        super().reset(seed=seed)
         self.snake.reset(x=self.width // 2, y=self.height // 2)
         self.food = self._generate_food()
 
         self.score = 0
+        self.health = 50
 
-        return self.get_observation(), {}
+        return self._get_obs(), {}
 
     def _generate_food(self) -> FieldPoint:
         food = None
@@ -151,20 +183,86 @@ class SnakeEnvironment(gym.Env):
                 food = None
         return food
 
-    def get_observation(self) -> ObsType:
-        board = np.zeros((self.width + 2, self.height + 2, len(FieldType)))
+    def _get_obs(self, head_in_wall: bool = False) -> ObsType:
+        board = np.zeros((len(FieldType), self.width, self.height), dtype=np.int8)
 
-        # Board
-        board[0, :, FieldType.WALL.value] = 1
-        board[:, -1, FieldType.WALL.value] = 1
-        board[-1, :, FieldType.WALL.value] = 1
-        board[:, 0, FieldType.WALL.value] = 1
-        board[1:-1, 1:-1, FieldType.GRASS.value] = 1
         # Snake
-        board[self.snake.head.x + 1, self.snake.head.y + 1, FieldType.SNAKE_HEAD.value] = 1
+        if not head_in_wall:
+            board[FieldType.SNAKE_HEAD.value, self.snake.head.x, self.snake.head.y] = 1
         snake = np.asarray([(fp.x, fp.y) for fp in self.snake.body])
-        board[snake[:, 0] + 1, snake[:, 1] + 1, FieldType.SNAKE_BODY.value] = 1
+        board[FieldType.SNAKE_BODY.value, snake[:, 0], snake[:, 1]] = 1
         # Food
-        board[self.food.x, self.food.y, FieldType.FOOD.value] = 1
+        board[FieldType.FOOD.value, self.food.x, self.food.y] = 1
 
         return board
+
+    @staticmethod
+    def action_mask(env: "SnakeEnvironment") -> np.ndarray:
+        mask = np.ones((len(Direction),), dtype=np.bool)
+        mask[env.snake.direction.opposite().value] = False
+        return mask
+
+    def render(self) -> RenderFrame | list[RenderFrame] | None:
+        if self.render_mode in ["human", "rgb_array"]:
+            return self._render_frame()
+        return None
+
+    def _render_frame(self) -> RenderFrame | list[RenderFrame] | None:
+        if self.window is None and self.render_mode == "human":
+            pygame.init()
+            pygame.display.init()
+            self.window = pygame.display.set_mode((self.window_width, self.window_height))
+            pygame.display.set_caption("Snake")
+            self.clock = pygame.time.Clock()
+
+        # --- Drawing ---
+        canvas = pygame.Surface((self.window_width, self.window_height))
+        canvas.fill(self.COLORS["background"])
+
+        # Draw the snake's body
+        for part in self.snake.body:
+            rect = pygame.Rect(
+                part.x * self.block_size,
+                part.y * self.block_size,
+                self.block_size,
+                self.block_size,
+            )
+            pygame.draw.rect(canvas, self.COLORS["snake_body"], rect)
+
+        # Draw the snake's head
+        head_rect = pygame.Rect(
+            self.snake.head.x * self.block_size,
+            self.snake.head.y * self.block_size,
+            self.block_size,
+            self.block_size,
+        )
+        pygame.draw.rect(canvas, self.COLORS["snake_head"], head_rect)
+
+        # Draw the food
+        food_rect = pygame.Rect(
+            self.food.x * self.block_size,
+            self.food.y * self.block_size,
+            self.block_size,
+            self.block_size,
+        )
+        pygame.draw.rect(canvas, self.COLORS["food"], food_rect)
+
+        if self.render_mode == "human":
+            # The following line copies our drawings from `canvas` to the visible window
+            self.window.blit(canvas, canvas.get_rect())
+            pygame.event.pump()
+            pygame.display.update()
+
+            # We need to ensure that human-rendering occurs at the predefined framerate.
+            # The following line will automatically add a delay to keep the framerate stable.
+            self.clock.tick(self.metadata["render_fps"])
+            return None
+        else:  # rgb_array
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
+            )
+
+    def close(self):
+        if self.window is not None:
+            pygame.display.quit()
+            pygame.quit()

@@ -140,3 +140,6 @@ dmypy.json
 cython_debug/
 
 /gym-snake-rl
+
+runs
+models

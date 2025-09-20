@@ -1,72 +1,35 @@
-import os
-
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
+from gymnasium import spaces
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
 
-class DQN(nn.Module):
-    def __init__(self, input_size, output_size):
-        super(DQN, self).__init__()
+class CNNBoardFeatureExtractor(BaseFeaturesExtractor):
+    """
+    :param observation_space: (gym.Space)
+    :param features_dim: (int) Number of features extracted.
+        This corresponds to the number of unit for the last layer.
+    """
 
-        self.linear = nn.Sequential(
-            nn.Linear(input_size, 324),
+    def __init__(self, observation_space: spaces.Box, features_dim: int = 256):
+        super().__init__(observation_space, features_dim)
+        # WxHxC Board Dimensions
+        n_input_channels = observation_space.shape[0]
+        self.cnn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
-            nn.Linear(324, output_size)
+            nn.Conv2d(32, 32, kernel_size=1, stride=1, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
         )
 
-    def forward(self, x):
-        return self.linear(x)
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            n_flatten = self.cnn(
+                torch.as_tensor(observation_space.sample()[None]).float()
+            ).shape[1]
 
-    def save(self, max_score, file_name='model'):
-        model_folder_path = 'models_1'
-        if not os.path.exists(model_folder_path):
-            os.makedirs(model_folder_path)
+        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
 
-        file_name = os.path.join(model_folder_path, file_name + str(max_score) + '.pth')
-        torch.save(self.state_dict(), file_name)
-
-
-class QTrainer:
-    def __init__(self, model, lr, gamma):
-        from agent import LOG_VERSION
-        self.lr = lr
-        self.gamma = gamma
-        self.model = model
-        self.optimizer = optim.Adam(model.parameters(), lr=self.lr)
-        self.loss = nn.MSELoss()
-        self.writer = SummaryWriter(log_dir="runs/round_3/" + LOG_VERSION)
-
-    def train_step(self, states, actions, rewards, next_states, dones, epoch=0):
-        from agent import DEVICE
-        states = torch.tensor(states, dtype=torch.float).to(DEVICE)
-        actions = torch.tensor(actions, dtype=torch.float).to(DEVICE)
-        rewards = torch.tensor(rewards, dtype=torch.long).to(DEVICE)
-        next_states = torch.tensor(next_states, dtype=torch.float).to(DEVICE)
-        # (n, x)
-
-        if len(states.shape) == 1:
-            # (1, x)
-            states = torch.unsqueeze(states, 0).to(DEVICE)
-            actions = torch.unsqueeze(actions, 0).to(DEVICE)
-            rewards = torch.unsqueeze(rewards, 0).to(DEVICE)
-            next_states = torch.unsqueeze(next_states, 0).to(DEVICE)
-            dones = (dones,)
-
-        # 1: predicted Q values with current state
-        predictions = self.model(states)
-
-        # 2: Q_new = r + y * max(next_predicted Q value)
-        targets = predictions.clone()
-        for idx in range(len(dones)):
-            q_new = rewards[idx]
-            if not dones[idx]:
-                q_new = rewards[idx] + self.gamma * torch.max(self.model(next_states[idx]))
-            targets[idx][torch.argmax(actions[idx])] = q_new
-
-        loss = self.loss(targets, predictions)
-        self.writer.add_scalar("Metrics/loss", loss, epoch)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        return self.linear(self.cnn(observations))
