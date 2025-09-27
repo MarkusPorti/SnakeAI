@@ -77,6 +77,7 @@ class HParamCallback(BaseCallback):
             # "clip_range": self.model.clip_range,
             "ent_coef": self.model.ent_coef,
             "gamma": self.model.gamma,
+            "policy": str(self.model.policy_kwargs)
         }
         # define the metrics that will appear in the `HPARAMS` Tensorboard tab by referencing their tag
         # Tensorbaord will find & display metrics from the `SCALARS` tab

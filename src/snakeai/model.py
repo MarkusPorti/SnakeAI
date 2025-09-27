@@ -16,12 +16,11 @@ class CNNBoardFeatureExtractor(BaseFeaturesExtractor):
         # WxHxC Board Dimensions
         n_input_channels = observation_space.shape[0]
         self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=1, stride=1, padding=0),
+            nn.Conv2d(n_input_channels, 32, kernel_size=5, stride=1, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
+        self.cnn.compile()
 
         # Compute shape by doing one forward pass
         with torch.no_grad():
@@ -30,6 +29,7 @@ class CNNBoardFeatureExtractor(BaseFeaturesExtractor):
             ).shape[1]
 
         self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+        self.linear.compile()
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         return self.linear(self.cnn(observations))
