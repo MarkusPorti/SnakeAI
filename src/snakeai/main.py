@@ -87,15 +87,15 @@ def train(n_envs: int, experiment: str):
             log_interval=4,
         )
 
-        trained_model.save(os.path.join(sb3_logger.get_dir(), run.info.run_name))
+        trained_model.save(os.path.join(sb3_logger.get_dir(), "model"))
 
 
 @cli.command()
-@click.argument("model")
-def validate(model: str):
+@click.argument("experiment")
+def validate(experiment: str):
     env = create_env(render_mode="human")
 
-    model = MaskablePPO.load(f"./models/{model}", env=env)
+    model = MaskablePPO.load(os.path.join("runs", experiment, "model"), env=env)
 
     obs, _ = env.reset()
     env.render()
