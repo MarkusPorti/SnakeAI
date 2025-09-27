@@ -95,7 +95,7 @@ class Snake:
 
 
 class SnakeEnvironment(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 6}
 
     # Fields for the actual Game / State
     snake: Snake
@@ -211,7 +211,9 @@ class SnakeEnvironment(gym.Env):
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
-            self.window = pygame.display.set_mode((self.window_width, self.window_height))
+            self.window = pygame.display.set_mode(
+                (self.window_width, self.window_height)
+            )
             pygame.display.set_caption("Snake")
             self.clock = pygame.time.Clock()
 

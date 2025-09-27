@@ -96,12 +96,14 @@ def validate(model: str):
     done = False
     while not done:
         action, _ = model.predict(
-            obs, deterministic=True, action_masks=SnakeEnvironment.action_mask(env.unwrapped)
+            obs,
+            deterministic=True,
+            action_masks=SnakeEnvironment.action_mask(env.unwrapped),
         )
         obs, reward, terminated, truncated, info = env.step(action)
         env.render()
         done = terminated or truncated
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()
