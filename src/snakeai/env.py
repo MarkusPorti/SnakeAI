@@ -50,7 +50,7 @@ class Snake:
         ]
         self.direction = Direction.RIGHT
 
-    def step(self, action: Direction, food: FieldPoint, width: int, height: int):
+    def step(self, action: Direction, food: list[FieldPoint], width: int, height: int):
         # Move into the direction.
         self.direction = action
 
@@ -70,7 +70,7 @@ class Snake:
             raise ValueError(f"Invalid action. Must be one of {list(Direction)}")
 
         # 3. Swallowed an apple? Good job.
-        if self.head == food:
+        if self.head in food:
             return 1
 
         # Now check for any collisions
@@ -99,7 +99,7 @@ class SnakeEnvironment(gym.Env):
 
     # Fields for the actual Game / State
     snake: Snake
-    food: FieldPoint | None
+    food: list[FieldPoint] | None = []
     score: int
     health: int
 
@@ -140,7 +140,9 @@ class SnakeEnvironment(gym.Env):
 
         self.health -= 1
         if result == 1:
-            self.food = self._generate_food()
+            self.food.remove(self.snake.head)
+            if not self.food:
+                self.food.append(self._generate_food())
             self.health += 30
             self.score += 1
 
@@ -148,14 +150,20 @@ class SnakeEnvironment(gym.Env):
 
         terminated = result < 0
         truncated = self.health <= 0
-        return self._get_obs(head_in_wall=result==-1), reward, terminated, truncated, {}
+        return (
+            self._get_obs(head_in_wall=result == -1),
+            reward,
+            terminated,
+            truncated,
+            {},
+        )
 
     def calc_reward(self, step_result: int) -> float:
         reward = 0
         if step_result == 1:
-            reward += self.score * 3
+            reward += self.score * 2
         elif step_result == 0:
-            reward -= 0.0001
+            reward -= min(0, -self.health + 100) * 0.0001
         elif step_result < 0:
             reward = -1
         return reward
@@ -165,7 +173,9 @@ class SnakeEnvironment(gym.Env):
     ) -> tuple[ObsType, dict[str, Any]]:
         super().reset(seed=seed)
         self.snake.reset(x=self.width // 2, y=self.height // 2)
-        self.food = self._generate_food()
+        self.food = []
+        for _ in range(5):
+            self.food.append(self._generate_food())
 
         self.score = 0
         self.health = 50
@@ -179,7 +189,7 @@ class SnakeEnvironment(gym.Env):
                 x=randint(0, self.width - 1),
                 y=randint(0, self.height - 1),
             )
-            if food in self.snake:
+            if food in self.snake or food in self.food:
                 food = None
         return food
 
@@ -192,7 +202,11 @@ class SnakeEnvironment(gym.Env):
         snake = np.asarray([(fp.x, fp.y) for fp in self.snake.body])
         board[FieldType.SNAKE_BODY.value, snake[:, 0], snake[:, 1]] = 1
         # Food
-        board[FieldType.FOOD.value, self.food.x, self.food.y] = 1
+        board[
+            FieldType.FOOD.value,
+            [food.x for food in self.food],
+            [food.y for food in self.food],
+        ] = 1
 
         return board
 
@@ -241,13 +255,14 @@ class SnakeEnvironment(gym.Env):
         pygame.draw.rect(canvas, self.COLORS["snake_head"], head_rect)
 
         # Draw the food
-        food_rect = pygame.Rect(
-            self.food.x * self.block_size,
-            self.food.y * self.block_size,
-            self.block_size,
-            self.block_size,
-        )
-        pygame.draw.rect(canvas, self.COLORS["food"], food_rect)
+        for food in self.food:
+            food_rect = pygame.Rect(
+                food.x * self.block_size,
+                food.y * self.block_size,
+                self.block_size,
+                self.block_size,
+            )
+            pygame.draw.rect(canvas, self.COLORS["food"], food_rect)
 
         if self.render_mode == "human":
             # The following line copies our drawings from `canvas` to the visible window
