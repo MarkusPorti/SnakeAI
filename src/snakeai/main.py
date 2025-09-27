@@ -12,7 +12,7 @@ from stable_baselines3.common.callbacks import ProgressBarCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import Logger
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 
 from snakeai.callbacks import VideoRecorderCallback, HParamCallback
 from snakeai.env import SnakeEnvironment
@@ -69,7 +69,7 @@ def train(n_envs: int, experiment: str):
     exp_id = exp.experiment_id if exp else mlflow.create_experiment(experiment)
 
     with mlflow.start_run(experiment_id=exp_id) as run:
-        env = make_vec_env(create_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)
+        env = make_vec_env(create_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv if n_envs > 1 else DummyVecEnv)
         params = get_params()
         model = create_model(env, params, sb3_logger)
 
